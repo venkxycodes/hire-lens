@@ -1,17 +1,24 @@
 import { useState, type FormEvent } from "react";
 import { FileText, UploadCloud } from "lucide-react";
-import { mutation } from "./api";
+import { api, mutation } from "./api";
 import { ErrorMessage } from "./components";
 
 export function Compare() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState<string[]>([]);
+  const [selected, setSelected] = useState("");
   const [result, setResult] = useState<{
     score: number;
     filename: string;
     resume_name: string;
     matched_terms: string[];
   } | null>(null);
+  useState(() => {
+    void api<{ resumes: string[] }>("compare/").then((data) =>
+      setSaved(data.resumes),
+    );
+  });
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);

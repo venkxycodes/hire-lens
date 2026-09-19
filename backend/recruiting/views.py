@@ -82,19 +82,31 @@ class LoginView(APIView):
 class CompareResumeView(APIView):
     """Compare one uploaded resume with one JD without requiring a Job or Jev setup."""
 
+    def get(self, request):
+        root = Path(settings.BASE_DIR) / "data" / "resumes"
+        root.mkdir(parents=True, exist_ok=True)
+        return Response({"resumes": sorted(p.name for p in root.glob("*.pdf") if p.is_file())})
+
     def post(self, request):
         description = str(request.data.get("job_description", "")).strip()
         upload = request.FILES.get("resume")
+        existing = str(request.data.get("resume_name", "")).strip()
         if len(description) < 40:
             return Response({"detail": "Paste a job description with at least 40 characters."}, status=400)
+        root = Path(settings.BASE_DIR) / "data" / "resumes"
+        root.mkdir(parents=True, exist_ok=True)
+        if existing and not upload:
+            candidate = root / Path(existing).name
+            if candidate.parent != root or not candidate.is_file():
+                return Response({"detail": "That saved resume was not found."}, status=404)
+            upload = open(candidate, "rb")
+            upload.name = candidate.name
         if not upload or not upload.name.lower().endswith(".pdf"):
-            return Response({"detail": "Upload one PDF resume."}, status=400)
+            return Response({"detail": "Choose a saved PDF or upload one."}, status=400)
         try:
             resume_text = extract_resume(upload)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
-        root = Path(settings.BASE_DIR) / "data" / "resumes"
-        root.mkdir(parents=True, exist_ok=True)
         safe_name = Path(upload.name).name
         target = root / safe_name
         if target.exists():
