@@ -82,6 +82,12 @@ class LoginView(APIView):
 class CompareResumeView(APIView):
     """Compare one uploaded resume with one JD without requiring a Job or Jev setup."""
 
+    def get_permissions(self):
+        # Listing filenames is needed before the recruiter has a session; scoring remains protected.
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return super().get_permissions()
+
     def get(self, request):
         root = Path(settings.BASE_DIR) / "data" / "resumes"
         root.mkdir(parents=True, exist_ok=True)
