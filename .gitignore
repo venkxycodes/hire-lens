@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+*.sqlite3
+backend/media/
+playwright-report/
+test-results/
+.DS_Store
+*.tsbuildinfo
+*.egg-info/

@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file: .env.example
+    environment:
+      SERVICE_ROLE: migrate
+      POSTGRES_HOST: postgres
+      DJANGO_SETTINGS_MODULE: host.settings.local
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file: .env.example
+    environment:
+      SERVICE_ROLE: api
+      PORT: 8000
+      POSTGRES_HOST: postgres
+      DJANGO_SETTINGS_MODULE: host.settings.local
+      OTEL_SERVICE_NAME: django-base-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  async:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file: .env.example
+    environment:
+      SERVICE_ROLE: async
+      PORT: 8001
+      POSTGRES_HOST: postgres
+      DJANGO_SETTINGS_MODULE: host.settings.local
+      OTEL_SERVICE_NAME: django-base-async
+    ports:
+      - "8001:8001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file: .env.example
+    environment:
+      SERVICE_ROLE: worker
+      POSTGRES_HOST: postgres
+      DJANGO_SETTINGS_MODULE: host.settings.local
+      OTEL_SERVICE_NAME: django-base-worker
+      WORKER_NAME: default
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
