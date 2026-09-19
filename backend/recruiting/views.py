@@ -1,4 +1,6 @@
 import hashlib
+import re
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
@@ -74,6 +76,37 @@ class LoginView(APIView):
                 "jev_configured": bool(settings.JEV_API_KEY),
             }
         )
+
+
+
+class CompareResumeView(APIView):
+    """Compare one uploaded resume with one JD without requiring a Job or Jev setup."""
+
+    def post(self, request):
+        description = str(request.data.get("job_description", "")).strip()
+        upload = request.FILES.get("resume")
+        if len(description) < 40:
+            return Response({"detail": "Paste a job description with at least 40 characters."}, status=400)
+        if not upload or not upload.name.lower().endswith(".pdf"):
+            return Response({"detail": "Upload one PDF resume."}, status=400)
+        try:
+            resume_text = extract_resume(upload)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        root = Path(settings.BASE_DIR) / "data" / "resumes"
+        root.mkdir(parents=True, exist_ok=True)
+        safe_name = Path(upload.name).name
+        target = root / safe_name
+        if target.exists():
+            target = root / f"{Path(safe_name).stem}-{hashlib.sha256(resume_text.encode()).hexdigest()[:8]}.pdf"
+        upload.seek(0)
+        target.write_bytes(upload.read())
+        stop = {"and", "the", "with", "for", "that", "this", "from", "are", "you", "your", "our", "have", "will", "job", "role"}
+        terms = {w for w in re.findall(r"[a-z][a-z+#.]{2,}", description.lower()) if w not in stop}
+        resume_terms = set(re.findall(r"[a-z][a-z+#.]{2,}", resume_text.lower()))
+        matched = sorted(terms & resume_terms)
+        score = round(100 * len(matched) / max(1, len(terms)), 1)
+        return Response({"filename": target.name, "score": score, "matched_terms": matched, "resume_name": contact_from_text(resume_text, target.name)[0]})
 
 
 class Pages(PageNumberPagination):

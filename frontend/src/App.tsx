@@ -28,6 +28,7 @@ import {
   stageLabel,
 } from "./components";
 import { CandidatePanel } from "./CandidatePanel";
+import { Compare } from "./Compare";
 import { JobEditor } from "./JobEditor";
 import { Upload } from "./Upload";
 import type { Candidate, Job, Page, Session } from "./types";
@@ -37,6 +38,7 @@ export default function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobId, setJobId] = useState<number | null>(null);
   const [editor, setEditor] = useState<false | "new" | Job>(false);
+  const [view, setView] = useState<"roles" | "compare">("roles");
   const [uploading, setUploading] = useState(false);
   const [reviewOrder, setReviewOrder] = useState<number[]>([]);
   const [candidateId, setCandidateId] = useState<number | null>(null);
@@ -228,9 +230,25 @@ export default function App() {
           </span>
         </a>
         <p className="nav-label">WORKSPACE</p>
-        <button className="nav-item active" onClick={() => openJob(null)}>
+        <button
+          className={`nav-item ${view === "roles" ? "active" : ""}`}
+          onClick={() => {
+            setView("roles");
+            openJob(null);
+          }}
+        >
           <BriefcaseBusiness size={18} />
           Roles<span>{jobs.length}</span>
+        </button>
+        <button
+          className={`nav-item ${view === "compare" ? "active" : ""}`}
+          onClick={() => {
+            setView("compare");
+            openJob(null);
+          }}
+        >
+          <FileText size={18} />
+          Compare
         </button>
         <button
           className="icon-button mobile-only"
@@ -305,7 +323,9 @@ export default function App() {
               </button>
             </div>
           )}
-          {!job ? (
+          {view === "compare" ? (
+            <Compare />
+          ) : !job ? (
             <>
               <div className="page-heading">
                 <div>
