@@ -113,12 +113,12 @@ export function Compare() {
             </p>
           </div>
           <div>
-            <b>Evidence found</b>
-            <p className="muted">
-              {result.matched_terms.length
-                ? result.matched_terms.join(" · ")
-                : "No shared signals found"}
-            </p>
+            <b>Criteria scores</b>
+            {result.criteria_results?.map((item: any) => (
+              <p className="small" key={item.id}>
+                {item.name}: <strong>{Math.round(item.score)}/100</strong>
+              </p>
+            ))}
           </div>
         </div>
       )}
