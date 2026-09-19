@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "match-jack-with-jill"
+version = "0.1.0"
+description = "Django boilerplate with WSGI, ASGI, workers, GraphQL, and REST"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "Django>=4.2,<6",
+    "djangorestframework>=3.15",
+    "graphene-django>=3.2",
+    "python-dotenv>=1.0",
+    "httpx>=0.28",
+    "pypdf>=6",
+    "python-docx>=1.2",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-django>=4.8", "ruff>=0.12"]
+dev = [
+    "psycopg[binary]>=3.1",
+    "uvicorn[standard]>=0.30",
+    "gunicorn>=22",
+    "poethepoet>=0.27",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "host.settings.test"
+pythonpath = ["."]
+python_files = ["test_*.py"]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.poe.tasks]
+help = "List process entrypoints"
+
+[tool.poe.tasks."dev:deps"]
+help = "Start PostgreSQL"
+cmd = "docker compose up -d postgres"
+
+[tool.poe.tasks."dev:migrate"]
+help = "Apply database migrations"
+cmd = "python manage.py migrate"
+env = { DJANGO_SETTINGS_MODULE = "host.settings.local" }
+
+[tool.poe.tasks."dev:api"]
+help = "Run HTTP API via WSGI"
+cmd = "gunicorn host.wsgi:application --bind :8000 --reload --workers 1 --threads 4"
+env = { DJANGO_SETTINGS_MODULE = "host.settings.local", OTEL_SERVICE_NAME = "django-base-api" }
+
+[tool.poe.tasks."dev:async"]
+help = "Run HTTP API via ASGI"
+cmd = "uvicorn host.asgi:application --reload --host 127.0.0.1 --port 8001"
+env = { DJANGO_SETTINGS_MODULE = "host.settings.local", OTEL_SERVICE_NAME = "django-base-async" }
+
+[tool.poe.tasks."dev:worker"]
+help = "Run background worker"
+cmd = "python manage.py run_worker --name default"
+env = { DJANGO_SETTINGS_MODULE = "host.settings.local", OTEL_SERVICE_NAME = "django-base-worker" }
+
+[tool.poe.tasks.test]
+help = "Run tests"
+cmd = "pytest tests"
