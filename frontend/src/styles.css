@@ -1318,3 +1318,53 @@ summary {
     display: inline-flex;
   }
 }
+.compare-card {
+  max-width: 860px;
+}
+.compare-form {
+  display: grid;
+  gap: 18px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+.compare-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 600;
+}
+.compare-form textarea {
+  min-height: 220px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.compare-form input[type="file"] {
+  padding: 12px;
+  border: 1px dashed #b9c8bc;
+  border-radius: 7px;
+  background: #fafcf9;
+}
+.compare-result {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  background: #edf6ef;
+  border: 1px solid #cfe3d3;
+  border-radius: 10px;
+  padding: 20px;
+}
+.compare-result strong {
+  display: block;
+  font:
+    750 42px Manrope,
+    sans-serif;
+  color: var(--green);
+}
+.compare-result strong small {
+  font-size: 16px;
+  font-weight: 500;
+}
