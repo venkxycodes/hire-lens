@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from django.db.models import Count, F, Q
 from django.http import FileResponse
+from django.core.files import File
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -106,8 +107,7 @@ class CompareResumeView(APIView):
             candidate = root / Path(existing).name
             if candidate.parent != root or not candidate.is_file():
                 return Response({"detail": "That saved resume was not found."}, status=404)
-            upload = open(candidate, "rb")
-            upload.name = candidate.name
+            upload = File(candidate.open("rb"), name=candidate.name)
         if not upload or not upload.name.lower().endswith(".pdf"):
             return Response({"detail": "Choose a saved PDF or upload one."}, status=400)
         try:
