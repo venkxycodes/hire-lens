@@ -89,7 +89,7 @@ class CompareResumeView(APIView):
         return super().get_permissions()
 
     def get(self, request):
-        root = Path(settings.BASE_DIR) / "data" / "resumes"
+        root = Path(settings.BASE_DIR).parent / "data" / "resumes"
         root.mkdir(parents=True, exist_ok=True)
         return Response({"resumes": sorted(p.name for p in root.glob("*.pdf") if p.is_file())})
 
@@ -100,7 +100,7 @@ class CompareResumeView(APIView):
         existing = str(request.data.get("resume_name", "")).strip()
         if len(description) < 40:
             return Response({"detail": "Paste a job description with at least 40 characters."}, status=400)
-        root = Path(settings.BASE_DIR) / "data" / "resumes"
+        root = Path(settings.BASE_DIR).parent / "data" / "resumes"
         root.mkdir(parents=True, exist_ok=True)
         if existing and not upload:
             candidate = root / Path(existing).name
