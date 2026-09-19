@@ -59,6 +59,17 @@ JEV_MODE=demo ./scripts/dev.sh
 
 Sign in as `demo` with the password you chose. The seed command does not change an existing user's password. Demo results use a deterministic keyword-overlap function and are labeled throughout the UI; they are **not Jev scores**. Switching to live mode makes them stale and allows live re-evaluation without editing the role.
 
+### Score the local resume corpus
+
+Place PDF resumes in `data/resumes/`. After creating a role with its job description and weighted criteria, import and score the folder against that role:
+
+```sh
+cd backend
+JEV_MODE=demo uv run python manage.py import_resume_folder --job-id 1 ../data/resumes
+```
+
+The command extracts each PDF, skips duplicates, creates candidates for the selected job, queues evaluations, and lets the Candidates view sort them by their current weighted score. Use `JEV_MODE=live` with a configured Jev key for provider scoring.
+
 ### Verify
 
 ```sh
