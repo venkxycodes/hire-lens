@@ -107,5 +107,5 @@ if ENV in {"production", "prod"}:
         raise ValueError("Set a strong SECRET_KEY for production")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_NAME = "mjj_session"
-CSRF_COOKIE_NAME = "mjj_csrf"
+SESSION_COOKIE_NAME = "hirelens_session"
+CSRF_COOKIE_NAME = "hirelens_csrf"

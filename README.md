@@ -1,4 +1,4 @@
-# Jack & Jill
+# HireLens
 
 A quiet recruiting workspace built with Django, React/TypeScript, and Jev. Define a role, add resumes in batches, evaluate them against your criteria, and decide who deserves a conversation.
 
