@@ -20,7 +20,12 @@ export function Compare() {
     setError("");
     setResult(null);
     try {
-      setResult(await mutation("compare/", new FormData(event.currentTarget)));
+      setResult(
+        await api("compare/", {
+          method: "POST",
+          body: new FormData(event.currentTarget),
+        }),
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
