@@ -23,7 +23,7 @@ from rest_framework.views import APIView
 from .documents import contact_from_text, extract_resume
 from .evaluations import enqueue
 from .models import Activity, Application, Job
-from .scoring import PROMPT_VERSION
+from .scoring import PROMPT_VERSION, ProviderError, evaluate_live, summarize
 from .serializers import (
     ApplicationDetailSerializer,
     ApplicationSerializer,
@@ -120,15 +120,18 @@ class CompareResumeView(APIView):
             target = root / f"{Path(safe_name).stem}-{hashlib.sha256(resume_text.encode()).hexdigest()[:8]}.pdf"
         upload.seek(0)
         target.write_bytes(upload.read())
-        stop = {"and", "the", "with", "for", "that", "this", "from", "are", "you", "your", "our", "have", "will", "job", "role"}
         criteria = [line.strip() for line in criteria_text.splitlines() if line.strip()]
-        terms = {w for w in re.findall(r"[a-z][a-z+#.]{2,}", (description + " " + " ".join(criteria)).lower()) if w not in stop}
-        resume_terms = set(re.findall(r"[a-z][a-z+#.]{2,}", resume_text.lower()))
-        matched = sorted(terms & resume_terms)
-        score = round(100 * len(matched) / max(1, len(terms)), 1)
+        if not criteria:
+            return Response({"detail": "Add at least one comparison criterion."}, status=400)
+        rubric = [{"id": f"criterion_{i}", "name": item[:120], "description": item, "weight": 1, "required": False} for i, item in enumerate(criteria)]
+        snapshot = {"description": description, "criteria": rubric}
+        try:
+            answers = evaluate_live(snapshot, resume_text, settings.JEV_MODEL)
+            score, confidence, results = summarize(answers, rubric)
+        except ProviderError as exc:
+            return Response({"detail": str(exc)}, status=503)
         verdict = "Good match" if score >= 90 else "Average match" if score >= 70 else "No match"
-        detail = (f"Matched {len(matched)} of {len(terms)} signals" + (f" across {len(criteria)} criteria." if criteria else "."))
-        return Response({"filename": target.name, "score": score, "verdict": verdict, "detail": detail, "matched_terms": matched, "resume_name": contact_from_text(resume_text, target.name)[0]})
+        return Response({"filename": target.name, "score": score, "confidence": confidence, "verdict": verdict, "detail": f"Jev evaluated {len(results)} criteria at {round(confidence * 100)}% average confidence.", "criteria_results": results, "resume_name": contact_from_text(resume_text, target.name)[0]})
 
 
 class Pages(PageNumberPagination):
