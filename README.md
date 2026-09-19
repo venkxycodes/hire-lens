@@ -59,6 +59,18 @@ JEV_MODE=demo ./scripts/dev.sh
 
 Sign in as `demo` with the password you chose. The seed command does not change an existing user's password. Demo results use a deterministic keyword-overlap function and are labeled throughout the UI; they are **not Jev scores**. Switching to live mode makes them stale and allows live re-evaluation without editing the role.
 
+### Rank a local PDF corpus
+
+For a folder containing raw PDF resumes, import and queue them against a job in one command. The job's saved criteria determine the marks and the candidate list is ranked by the current weighted score as evaluations complete:
+
+```sh
+cd backend
+JEV_MODE=demo uv run python manage.py import_resume_folder --job-id 1 /path/to/resumes
+```
+
+Use `--recursive` for nested folders or `--no-evaluate` when you want to inspect the imported candidates first. The command extracts text, derives a name/email when available, stores the original PDF, skips duplicate resume content, reports unreadable files individually, and queues the current Job-1 rubric. Open the job's Candidates view and choose **Highest score** to see the ranked list. With `JEV_MODE=live`, set `JEV_API_KEY` first; the worker then calls Jev once per resume with all criteria in parallel.
+
+
 ### Verify
 
 ```sh

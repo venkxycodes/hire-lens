@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "pytest-django>=4.8", "ruff>=0.12"]
+test = ["pytest>=8", "pytest-django>=4.8", "ruff>=0.12", "reportlab>=4.0"]
 dev = [
     "psycopg[binary]>=3.1",
     "uvicorn[standard]>=0.30",
