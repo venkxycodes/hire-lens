@@ -130,9 +130,8 @@ class CompareResumeView(APIView):
             score, confidence, results = summarize(answers, rubric)
         except ProviderError as exc:
             return Response({"detail": str(exc)}, status=503)
-        final_score = round(score * 0.8 + confidence * 100 * 0.2, 1)
-        verdict = "Good match" if final_score >= 90 else "Average match" if final_score >= 70 else "No match"
-        return Response({"filename": target.name, "score": final_score, "jev_score": score, "confidence": confidence, "verdict": verdict, "detail": f"Final score blends 80% Jev match ({score}/100) and 20% evidence confidence ({round(confidence * 100)}%).", "criteria_results": results, "resume_name": contact_from_text(resume_text, target.name)[0]})
+        verdict = "Good match" if score >= 90 else "Average match" if score >= 70 else "No match"
+        return Response({"filename": target.name, "score": score, "verdict": verdict, "detail": f"Jev evaluated {len(results)} comparison criteria.", "criteria_results": results, "resume_name": contact_from_text(resume_text, target.name)[0]})
 
 
 class Pages(PageNumberPagination):
