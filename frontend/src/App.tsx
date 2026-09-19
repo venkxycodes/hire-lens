@@ -184,7 +184,7 @@ export default function App() {
   if (!session)
     return (
       <main className="startup">
-        <h1>HireLens</h1>
+        <h1>Jack & Jill</h1>
         {initialError ? (
           <ErrorMessage
             message={`Couldn't connect to the application. ${initialError}`}
@@ -221,10 +221,10 @@ export default function App() {
           }}
         >
           <span className="brand-mark">
-            H<span>L</span>
+            j<span>j</span>
           </span>
           <span>
-            HireLens<small>RECRUITING WORKSPACE</small>
+            jack & jill<small>RECRUITING WORKSPACE</small>
           </span>
         </a>
         <p className="nav-label">WORKSPACE</p>
@@ -828,9 +828,9 @@ function Login({
     <main className="login-page">
       <section className="login-story">
         <span className="brand-mark">
-          H<span>L</span>
+          j<span>j</span>
         </span>
-        <p className="eyebrow">HIRELENS</p>
+        <p className="eyebrow">JACK & JILL</p>
         <h1>
           Less sifting.
           <br />

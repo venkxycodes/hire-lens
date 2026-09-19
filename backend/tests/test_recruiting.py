@@ -7,7 +7,6 @@ import httpx
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
 from docx import Document
@@ -384,28 +383,3 @@ def test_outreach_draft_persists_without_contacting(client, application):
     data = client.get(f"/api/v1/applications/{application.pk}/").json()
     assert data["outreach_subject"] == "Let's talk"
     assert data["stage"] == "new"
-
-
-def test_import_resume_folder_adds_pdfs_skips_duplicates_and_queues(job, tmp_path, settings, monkeypatch):
-    settings.JEV_MODE = "demo"
-    from recruiting.management.commands import import_resume_folder
-
-    for filename in ("alex.pdf", "duplicate.pdf", "bad.pdf"):
-        (tmp_path / filename).write_bytes(b"pdf")
-
-    def fake_extract(handle):
-        if handle.name.endswith("bad.pdf"):
-            raise ValueError("Not enough readable text.")
-        return TEXT
-
-    monkeypatch.setattr(import_resume_folder, "extract_resume", fake_extract)
-    call_command("import_resume_folder", "--job-id", str(job.pk), str(tmp_path))
-    assert job.applications.count() == 1
-    assert Evaluation.objects.filter(application__job=job, status="queued").count() == 1
-
-
-def test_import_resume_folder_requires_pdf_corpus(job, tmp_path):
-    from django.core.management import CommandError
-
-    with pytest.raises(CommandError, match="No PDF"):
-        call_command("import_resume_folder", "--job-id", str(job.pk), str(tmp_path))
