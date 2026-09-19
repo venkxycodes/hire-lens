@@ -1,32 +1,26 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { FileText, UploadCloud } from "lucide-react";
 import { api, mutation } from "./api";
 import { ErrorMessage } from "./components";
 
 export function Compare() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [saved, setSaved] = useState<string[]>([]);
-  const [selected, setSelected] = useState("");
-  const [result, setResult] = useState<{
-    score: number;
-    filename: string;
-    resume_name: string;
-    matched_terms: string[];
-  } | null>(null);
-  useState(() => {
-    void api<{ resumes: string[] }>("compare/").then((data) =>
-      setSaved(data.resumes),
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const [saved, setSaved] = useState<string[]>([]),
+    [selected, setSelected] = useState("");
+  const [result, setResult] = useState<any>(null);
+  useEffect(() => {
+    void api<{ resumes: string[] }>("compare/").then((d) =>
+      setSaved(d.resumes),
     );
-  });
+  }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
     setResult(null);
-    const data = new FormData(event.currentTarget);
     try {
-      setResult(await mutation("compare/", data));
+      setResult(await mutation("compare/", new FormData(event.currentTarget)));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -40,8 +34,8 @@ export function Compare() {
           <p className="eyebrow">ONE-TO-ONE MATCH</p>
           <h1>Compare a resume</h1>
           <p className="muted">
-            Paste a JD and upload one PDF. The file is saved to your local
-            resume corpus.
+            Choose a saved resume or upload one, then define what matters for
+            this JD.
           </p>
         </div>
         <FileText size={28} />
@@ -57,9 +51,44 @@ export function Compare() {
           />
         </label>
         <label>
-          Resume PDF
-          <input name="resume" type="file" accept="application/pdf" required />
+          Comparison criteria
+          <span className="small muted">
+            One criterion per line: skills, experience, outcomes, or
+            requirements.
+          </span>
+          <textarea
+            name="criteria"
+            placeholder={
+              "Python and Django\nExperience building APIs\nClear ownership and measurable outcomes"
+            }
+          />
         </label>
+        <label>
+          Saved resumes
+          {saved.length ? (
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+            >
+              <option value="">Choose a saved PDF…</option>
+              {saved.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="muted">No PDFs saved yet.</span>
+          )}
+          <span className="small muted">Or upload a new PDF</span>
+          <input
+            name="resume"
+            type="file"
+            accept="application/pdf"
+            required={!selected}
+          />
+        </label>
+        <input type="hidden" name="resume_name" value={selected} />
         <button className="primary" disabled={busy}>
           <UploadCloud size={16} />
           {busy ? "Comparing…" : "Compare resume"}
@@ -69,21 +98,21 @@ export function Compare() {
       {result && (
         <div className="compare-result">
           <div>
-            <span className="eyebrow">MATCH SCORE</span>
+            <span className="eyebrow">{result.verdict}</span>
             <strong>
               {Math.round(result.score)}
               <small>/100</small>
             </strong>
             <p>
-              {result.resume_name} · saved as {result.filename}
+              {result.resume_name} · {result.detail}
             </p>
           </div>
           <div>
-            <b>Matching terms</b>
+            <b>Evidence found</b>
             <p className="muted">
               {result.matched_terms.length
                 ? result.matched_terms.join(" · ")
-                : "No shared terms found"}
+                : "No shared signals found"}
             </p>
           </div>
         </div>

@@ -89,6 +89,7 @@ class CompareResumeView(APIView):
 
     def post(self, request):
         description = str(request.data.get("job_description", "")).strip()
+        criteria_text = str(request.data.get("criteria", "")).strip()
         upload = request.FILES.get("resume")
         existing = str(request.data.get("resume_name", "")).strip()
         if len(description) < 40:
@@ -114,11 +115,14 @@ class CompareResumeView(APIView):
         upload.seek(0)
         target.write_bytes(upload.read())
         stop = {"and", "the", "with", "for", "that", "this", "from", "are", "you", "your", "our", "have", "will", "job", "role"}
-        terms = {w for w in re.findall(r"[a-z][a-z+#.]{2,}", description.lower()) if w not in stop}
+        criteria = [line.strip() for line in criteria_text.splitlines() if line.strip()]
+        terms = {w for w in re.findall(r"[a-z][a-z+#.]{2,}", (description + " " + " ".join(criteria)).lower()) if w not in stop}
         resume_terms = set(re.findall(r"[a-z][a-z+#.]{2,}", resume_text.lower()))
         matched = sorted(terms & resume_terms)
         score = round(100 * len(matched) / max(1, len(terms)), 1)
-        return Response({"filename": target.name, "score": score, "matched_terms": matched, "resume_name": contact_from_text(resume_text, target.name)[0]})
+        verdict = "Good match" if score >= 90 else "Average match" if score >= 70 else "No match"
+        detail = (f"Matched {len(matched)} of {len(terms)} signals" + (f" across {len(criteria)} criteria." if criteria else "."))
+        return Response({"filename": target.name, "score": score, "verdict": verdict, "detail": detail, "matched_terms": matched, "resume_name": contact_from_text(resume_text, target.name)[0]})
 
 
 class Pages(PageNumberPagination):
