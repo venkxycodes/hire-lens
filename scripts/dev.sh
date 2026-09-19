@@ -13,5 +13,5 @@ pids+=("$!")
 pids+=("$!")
 (cd "$project_dir/frontend" && exec npm run dev) &
 pids+=("$!")
-echo 'HireLens: http://127.0.0.1:5188 — stop with Ctrl+C'
+echo 'Jack & Jill: http://127.0.0.1:5188 — stop with Ctrl+C'
 wait

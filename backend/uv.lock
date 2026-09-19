@@ -370,7 +370,7 @@ wheels = [
 ]
 
 [[package]]
-name = "hirelens"
+name = "match-jack-with-jill"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
