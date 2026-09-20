@@ -1368,3 +1368,5 @@ summary {
   font-size: 16px;
   font-weight: 500;
 }
+.matrix-card { margin-top: 20px; }
+.matrix-card th { white-space: nowrap; }
