@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { mutation } from "./api";
+import { api, mutation } from "./api";
 import { ErrorMessage, Modal } from "./components";
 import type { Criterion, Job } from "./types";
 const defaults: Criterion[] = [
@@ -47,6 +47,7 @@ export function JobEditor({
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const total = criteria.reduce((sum, c) => sum + c.weight, 0);
   function update(index: number, changes: Partial<Criterion>) {
     setCriteria((items) =>
@@ -129,6 +130,28 @@ export function JobEditor({
           <div className="section-title">
             <h3>Evaluation criteria</h3>
             <span className="muted">Weights normalized to 100%</span>
+            <button
+              type="button"
+              className="secondary"
+              disabled={drafting || description.length < 80}
+              onClick={async () => {
+                setDrafting(true);
+                setError("");
+                try {
+                  const result = await api<{ criteria: Criterion[] }>(
+                    "rubric-draft/",
+                    { method: "POST", body: JSON.stringify({ description }) },
+                  );
+                  setCriteria(result.criteria);
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setDrafting(false);
+                }
+              }}
+            >
+              {drafting ? "Drafting…" : "Draft from JD"}
+            </button>
           </div>
           <p className="small muted">
             Use specific, job-related skills. Required criteria flag gaps for

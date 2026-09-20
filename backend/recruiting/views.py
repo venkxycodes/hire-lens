@@ -80,6 +80,18 @@ class LoginView(APIView):
 
 
 
+class RubricDraftView(APIView):
+    def post(self, request):
+        description = str(request.data.get("description", "")).strip()
+        if len(description) < 80:
+            return Response({"detail": "Add a fuller job description before drafting criteria."}, status=400)
+        sentences = [part.strip(" .:-") for part in re.split(r"[\n.!?;]+", description) if len(part.strip()) >= 18][:8]
+        weights = max(1, 100 // max(1, len(sentences)))
+        criteria = [{"id": re.sub(r"[^a-z0-9]+", "-", item.lower()).strip("-")[:60] or f"criterion-{i}", "name": item[:100], "description": f"Evidence of {item[0].lower() + item[1:]}", "weight": weights, "required": i < 2} for i, item in enumerate(sentences)]
+        if criteria: criteria[-1]["weight"] += 100 - sum(c["weight"] for c in criteria)
+        return Response({"criteria": criteria})
+
+
 class CompareResumeView(APIView):
     """Compare one uploaded resume with one JD without requiring a Job or Jev setup."""
 
