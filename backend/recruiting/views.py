@@ -88,7 +88,7 @@ class RubricDraftView(APIView):
         if len(description) < 80:
             return Response({"detail": "Add a fuller job description before drafting criteria."}, status=400)
         if settings.OPENROUTER_API_KEY:
-            prompt = """Convert this job description into an editable hiring rubric. Return ONLY a JSON object with a criteria array. Each item must have id, name, description, category (eligibility/core_capability/technology/domain_experience/preferred/behavioral), priority (must_have/strong_signal/nice_to_have), weight (integer), required (boolean), rationale, and evidence_examples (array of strings). Use observable job evidence, separate must-haves from preferences, ignore demographic traits, and do not invent requirements.
+            prompt = """Convert this job description into an editable hiring rubric. Return ONLY a JSON object with a criteria array. Each item must have id, name, description, category (eligibility/core_capability/technology/domain_experience/preferred/behavioral), priority (must_have/strong_signal/nice_to_have), weight (integer), required (boolean), rationale, and evidence_examples (array of strings). Use observable job evidence, separate must-haves from preferences, ignore demographic traits, and do not invent requirements. Normalize equivalent technologies and frameworks: Django, Flask, and FastAPI are comparable Python web API frameworks; AWS, GCP, and Azure are comparable cloud platforms; PostgreSQL, MySQL, and SQL Server are comparable relational databases. Put equivalence guidance in the criterion description so Jev evaluates capability rather than exact keyword matches.
 
 JOB DESCRIPTION:
 """ + description
