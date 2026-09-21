@@ -83,3 +83,18 @@ class Activity(models.Model):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     message = models.CharField(max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class CompareRun(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="compare_runs")
+    job_description = models.TextField()
+    criteria = models.JSONField(default=list)
+    resume_filename = models.CharField(max_length=255)
+    score = models.FloatField()
+    verdict = models.CharField(max_length=30)
+    results = models.JSONField(default=list)
+    reasoning = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
