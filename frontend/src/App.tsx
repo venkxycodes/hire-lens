@@ -755,6 +755,47 @@ export default function App() {
                   </div>
                 )}
               </div>
+              {page?.results.some(
+                (candidate) => candidate.evaluation?.status === "completed",
+              ) && (
+                <div className="table-card matrix-card">
+                  <div className="section-title">
+                    <h2>Criterion matrix</h2>
+                    <span className="small muted">Jev scores by candidate</span>
+                  </div>
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Candidate</th>
+                          {job.criteria.map((criterion) => (
+                            <th key={criterion.id}>{criterion.name}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {page.results.map((candidate) => (
+                          <tr key={candidate.id}>
+                            <td>
+                              <strong>{candidate.name}</strong>
+                            </td>
+                            {job.criteria.map((criterion) => {
+                              const item = candidate.evaluation?.results.find(
+                                (result) => result.id === criterion.id,
+                              );
+                              return (
+                                <td key={criterion.id}>
+                                  {item ? `${Math.round(item.score)}/100` : "—"}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
               <div className="page-footnote">
                 <span>
                   Scores support your review. Hiring decisions stay with you.

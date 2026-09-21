@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -7,6 +8,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from django.db.models import Count, F, Q
 from django.http import FileResponse
+import httpx
 from django.core.files import File
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
@@ -78,6 +80,33 @@ class LoginView(APIView):
             }
         )
 
+
+
+class RubricDraftView(APIView):
+    def post(self, request):
+        description = str(request.data.get("description", "")).strip()
+        if len(description) < 80:
+            return Response({"detail": "Add a fuller job description before drafting criteria."}, status=400)
+        if settings.OPENROUTER_API_KEY:
+            prompt = """Convert this job description into an editable hiring rubric. Return ONLY a JSON object with a criteria array. Each item must have id, name, description, category (eligibility/core_capability/technology/domain_experience/preferred/behavioral), priority (must_have/strong_signal/nice_to_have), weight (integer), required (boolean), rationale, and evidence_examples (array of strings). Use observable job evidence, separate must-haves from preferences, ignore demographic traits, and do not invent requirements.
+
+JOB DESCRIPTION:
+""" + description
+            try:
+                response = httpx.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {settings.OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": "https://hire-lens.local", "X-Title": "HireLens"}, json={"model": settings.OPENROUTER_MODEL, "temperature": 0.1, "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]}, timeout=45)
+                response.raise_for_status()
+                content = response.json()["choices"][0]["message"]["content"]
+                draft = json.loads(content)
+                criteria = draft.get("criteria")
+                if isinstance(criteria, list) and criteria:
+                    return Response({"criteria": criteria[:12], "provider": "openrouter", "model": settings.OPENROUTER_MODEL})
+            except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+                pass
+        sentences = [part.strip(" .:-") for part in re.split(r"[\n.!?;]+", description) if len(part.strip()) >= 18][:8]
+        weights = max(1, 100 // max(1, len(sentences)))
+        criteria = [{"id": re.sub(r"[^a-z0-9]+", "-", item.lower()).strip("-")[:60] or f"criterion-{i}", "name": item[:100], "description": f"Evidence of {item[0].lower() + item[1:]}", "weight": weights, "required": i < 2} for i, item in enumerate(sentences)]
+        if criteria: criteria[-1]["weight"] += 100 - sum(c["weight"] for c in criteria)
+        return Response({"criteria": criteria, "provider": "heuristic-fallback"})
 
 
 class CompareResumeView(APIView):
@@ -236,6 +265,17 @@ class JobViewSet(viewsets.ModelViewSet):
             if created and upload:
                 application.resume.save(upload.name, upload)
         return application, created
+
+    @action(detail=True, methods=["get"], url_path="top-candidates")
+    def top_candidates(self, request, pk=None):
+        job = self.get_object()
+        try:
+            limit = min(max(int(request.query_params.get("limit", 10)), 1), 100)
+        except ValueError:
+            return Response({"detail": "limit must be a number between 1 and 100."}, status=400)
+        current = Q(latest_evaluation__job_version=F("job__version"), latest_evaluation__status="completed", latest_evaluation__provider=settings.JEV_MODE, latest_evaluation__model=settings.JEV_MODEL, latest_evaluation__prompt_version=PROMPT_VERSION)
+        candidates = Application.objects.filter(job=job).filter(current).select_related("latest_evaluation").order_by("-latest_evaluation__score", "id")[:limit]
+        return Response({"job": job.pk, "limit": limit, "results": ApplicationSerializer(candidates, many=True).data})
 
     @action(detail=True, methods=["post"])
     def evaluate(self, request, pk=None):
