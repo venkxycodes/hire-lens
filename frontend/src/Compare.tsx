@@ -9,11 +9,35 @@ export function Compare() {
   const [saved, setSaved] = useState<string[]>([]),
     [selected, setSelected] = useState("");
   const [result, setResult] = useState<any>(null);
+  const [jobDescription, setJobDescription] = useState("");
+  const [criteria, setCriteria] = useState("");
+  const [drafting, setDrafting] = useState(false);
   useEffect(() => {
     void api<{ resumes: string[] }>("compare/").then((d) =>
       setSaved(d.resumes),
     );
   }, []);
+  async function draftCriteria() {
+    setDrafting(true);
+    setError("");
+    try {
+      const draft = await api<{
+        criteria: { name: string; description: string }[];
+      }>("rubric-draft/", {
+        method: "POST",
+        body: JSON.stringify({ description: jobDescription }),
+      });
+      setCriteria(
+        draft.criteria
+          .map((item) => `${item.name}: ${item.description}`)
+          .join("\n"),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDrafting(false);
+    }
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -52,6 +76,8 @@ export function Compare() {
             name="job_description"
             minLength={40}
             required
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
             placeholder="Paste the complete job description…"
           />
         </label>
@@ -67,6 +93,14 @@ export function Compare() {
               "Python and Django\nExperience building APIs\nClear ownership and measurable outcomes"
             }
           />
+          <button
+            type="button"
+            className="secondary"
+            disabled={drafting || jobDescription.length < 40}
+            onClick={() => void draftCriteria()}
+          >
+            {drafting ? "Drafting criteria…" : "Draft criteria from JD"}
+          </button>
         </label>
         <label>
           Saved resumes
