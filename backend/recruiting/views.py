@@ -24,7 +24,7 @@ from rest_framework.views import APIView
 
 from .documents import contact_from_text, extract_resume
 from .evaluations import enqueue
-from .models import Activity, Application, CompareRun, Job
+from .models import Activity, Application, Job, ResumeScoringRun
 from .scoring import PROMPT_VERSION, ProviderError, evaluate_live, summarize
 from .serializers import (
     ApplicationDetailSerializer,
