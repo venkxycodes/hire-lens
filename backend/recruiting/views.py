@@ -266,6 +266,17 @@ class JobViewSet(viewsets.ModelViewSet):
                 application.resume.save(upload.name, upload)
         return application, created
 
+    @action(detail=True, methods=["get"], url_path="top-candidates")
+    def top_candidates(self, request, pk=None):
+        job = self.get_object()
+        try:
+            limit = min(max(int(request.query_params.get("limit", 10)), 1), 100)
+        except ValueError:
+            return Response({"detail": "limit must be a number between 1 and 100."}, status=400)
+        current = Q(latest_evaluation__job_version=F("job__version"), latest_evaluation__status="completed", latest_evaluation__provider=settings.JEV_MODE, latest_evaluation__model=settings.JEV_MODEL, latest_evaluation__prompt_version=PROMPT_VERSION)
+        candidates = Application.objects.filter(job=job).filter(current).select_related("latest_evaluation").order_by("-latest_evaluation__score", "id")[:limit]
+        return Response({"job": job.pk, "limit": limit, "results": ApplicationSerializer(candidates, many=True).data})
+
     @action(detail=True, methods=["post"])
     def evaluate(self, request, pk=None):
         job = self.get_object()
