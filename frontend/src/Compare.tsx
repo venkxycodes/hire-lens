@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { FileText, UploadCloud } from "lucide-react";
-import { api, mutation } from "./api";
+import { api } from "./api";
 import { ErrorMessage } from "./components";
 
 export function Compare() {
@@ -15,29 +15,6 @@ export function Compare() {
       setSaved(d.resumes),
     );
   }, []);
-  async function draftCriteria() {
-    setDrafting(true);
-    setError("");
-    try {
-      const draft = await api<{
-        criteria: { name: string; description: string }[];
-        provider?: string;
-        failure_reason?: string;
-      }>("rubric-draft/", {
-        method: "POST",
-        body: JSON.stringify({ description: jobDescription }),
-      });
-      setCriteria(
-        draft.criteria
-          .map((item) => `${item.name}: ${item.description}`)
-          .join("\n"),
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setDrafting(false);
-    }
-  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -48,6 +25,7 @@ export function Compare() {
       const draft = await api<{
         criteria: { name: string; description: string }[];
         provider?: string;
+        model?: string;
         failure_reason?: string;
       }>("rubric-draft/", {
         method: "POST",
@@ -60,6 +38,7 @@ export function Compare() {
           .join("\n"),
       );
       form.set("rubric_provider", draft.provider || "unknown");
+      form.set("rubric_model", draft.model || "");
       form.set("rubric_failure_reason", draft.failure_reason || "");
       setResult(await api("compare/", { method: "POST", body: form }));
     } catch (e) {
