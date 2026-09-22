@@ -106,7 +106,7 @@ JOB DESCRIPTION:
         weights = max(1, 100 // max(1, len(sentences)))
         criteria = [{"id": re.sub(r"[^a-z0-9]+", "-", item.lower()).strip("-")[:60] or f"criterion-{i}", "name": item[:100], "description": f"Evidence of {item[0].lower() + item[1:]}", "weight": weights, "required": i < 2} for i, item in enumerate(sentences)]
         if criteria: criteria[-1]["weight"] += 100 - sum(c["weight"] for c in criteria)
-        return Response({"criteria": criteria, "provider": "heuristic-fallback"})
+        return Response({"criteria": criteria, "provider": "heuristic-fallback", "failure_reason": "OpenRouter was unavailable or returned an invalid rubric; heuristic criteria were generated."})
 
 
 class CompareResumeView(APIView):
@@ -160,7 +160,7 @@ class CompareResumeView(APIView):
         except ProviderError as exc:
             return Response({"detail": str(exc)}, status=503)
         verdict = "Good match" if score >= 90 else "Average match" if score >= 70 else "No match"
-        run = ResumeScoringRun.objects.create(owner=request.user, job_description=description, criteria=rubric, resume_filename=target.name, score=score, verdict=verdict, results=results, reasoning=[f"{item['name']}: Jev score {round(item['score'])}/100." for item in results])
+        run = ResumeScoringRun.objects.create(owner=request.user, job_description=description, criteria=rubric, resume_filename=target.name, score=score, verdict=verdict, results=results, reasoning=[f"{item['name']}: Jev score {round(item['score'])}/100." for item in results], rubric_provider=request.data.get("rubric_provider", "unknown"), rubric_failure_reason=request.data.get("rubric_failure_reason", ""))
         return Response({"id": run.id, "filename": target.name, "score": score, "verdict": verdict, "detail": f"Jev evaluated {len(results)} comparison criteria.", "criteria_results": results, "reasoning": run.reasoning, "resume_name": contact_from_text(resume_text, target.name)[0]})
 
 
