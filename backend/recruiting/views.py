@@ -160,7 +160,7 @@ class CompareResumeView(APIView):
         except ProviderError as exc:
             return Response({"detail": str(exc)}, status=503)
         verdict = "Good match" if score >= 90 else "Average match" if score >= 70 else "No match"
-        run = ResumeScoringRun.objects.create(owner=request.user, job_description=description, criteria=rubric, resume_filename=target.name, score=score, verdict=verdict, results=results, reasoning=[f"{item['name']}: Jev score {round(item['score'])}/100." for item in results], rubric_provider=request.data.get("rubric_provider", "unknown"), rubric_failure_reason=request.data.get("rubric_failure_reason", ""))
+        run = ResumeScoringRun.objects.create(owner=request.user, job_description=description, criteria=rubric, resume_filename=target.name, score=score, verdict=verdict, results=results, reasoning=[f"{item['name']}: Jev score {round(item['score'])}/100." for item in results], metadata={"rubric_provider": request.data.get("rubric_provider", "unknown"), "rubric_failure_reason": request.data.get("rubric_failure_reason", "")})
         return Response({"id": run.id, "filename": target.name, "score": score, "verdict": verdict, "detail": f"Jev evaluated {len(results)} comparison criteria.", "criteria_results": results, "reasoning": run.reasoning, "resume_name": contact_from_text(resume_text, target.name)[0]})
 
 

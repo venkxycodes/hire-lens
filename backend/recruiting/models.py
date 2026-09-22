@@ -94,8 +94,7 @@ class ResumeScoringRun(models.Model):
     verdict = models.CharField(max_length=30)
     results = models.JSONField(default=list)
     reasoning = models.JSONField(default=list)
-    rubric_provider = models.CharField(max_length=40, default="unknown")
-    rubric_failure_reason = models.CharField(max_length=500, blank=True)
+    metadata = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
