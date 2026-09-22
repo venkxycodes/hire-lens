@@ -21,6 +21,8 @@ export function Compare() {
     try {
       const draft = await api<{
         criteria: { name: string; description: string }[];
+        provider?: string;
+        failure_reason?: string;
       }>("rubric-draft/", {
         method: "POST",
         body: JSON.stringify({ description: jobDescription }),
@@ -45,6 +47,8 @@ export function Compare() {
       const form = new FormData(event.currentTarget);
       const draft = await api<{
         criteria: { name: string; description: string }[];
+        provider?: string;
+        failure_reason?: string;
       }>("rubric-draft/", {
         method: "POST",
         body: JSON.stringify({ description: form.get("job_description") }),
@@ -55,6 +59,8 @@ export function Compare() {
           .map((item) => `${item.name}: ${item.description}`)
           .join("\n"),
       );
+      form.set("rubric_provider", draft.provider || "unknown");
+      form.set("rubric_failure_reason", draft.failure_reason || "");
       setResult(await api("compare/", { method: "POST", body: form }));
     } catch (e) {
       setError((e as Error).message);
