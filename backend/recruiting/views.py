@@ -92,21 +92,27 @@ class RubricDraftView(APIView):
 
 JOB DESCRIPTION:
 """ + description
-            try:
-                response = httpx.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {settings.OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": "https://hire-lens.local", "X-Title": "HireLens"}, json={"model": settings.OPENROUTER_MODEL, "temperature": 0.1, "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]}, timeout=45)
-                response.raise_for_status()
-                content = response.json()["choices"][0]["message"]["content"]
-                draft = json.loads(content)
-                criteria = draft.get("criteria")
-                if isinstance(criteria, list) and criteria:
-                    return Response({"criteria": criteria[:12], "provider": "openrouter", "model": settings.OPENROUTER_MODEL})
+            failures = []
+            for model in settings.OPENROUTER_MODELS:
+                try:
+                    response = httpx.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {settings.OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": "https://hire-lens.local", "X-Title": "HireLens"}, json={"model": model, "temperature": 0.1, "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]}, timeout=45)
+                    response.raise_for_status()
+                    content = response.json()["choices"][0]["message"]["content"]
+                    draft = json.loads(content)
+                    criteria = draft.get("criteria")
+                    if isinstance(criteria, list) and criteria:
+                        return Response({"criteria": criteria[:12], "provider": "openrouter", "model": model})
+                    failures.append(f"{model}: invalid criteria")
+                except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                    failures.append(f"{model}: {exc}")
+            failure_reason = "All OpenRouter rubric models failed: " + "; ".join(failures)
             except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError):
                 pass
         sentences = [part.strip(" .:-") for part in re.split(r"[\n.!?;]+", description) if len(part.strip()) >= 18][:8]
         weights = max(1, 100 // max(1, len(sentences)))
         criteria = [{"id": re.sub(r"[^a-z0-9]+", "-", item.lower()).strip("-")[:60] or f"criterion-{i}", "name": item[:100], "description": f"Evidence of {item[0].lower() + item[1:]}", "weight": weights, "required": i < 2} for i, item in enumerate(sentences)]
         if criteria: criteria[-1]["weight"] += 100 - sum(c["weight"] for c in criteria)
-        return Response({"criteria": criteria, "provider": "heuristic-fallback", "failure_reason": "OpenRouter was unavailable or returned an invalid rubric; heuristic criteria were generated."})
+        return Response({"criteria": criteria, "provider": "heuristic-fallback", "failure_reason": locals().get("failure_reason", "OpenRouter was unavailable or returned an invalid rubric; heuristic criteria were generated.")})
 
 
 class CompareResumeView(APIView):
