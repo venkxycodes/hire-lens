@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { FileText, UploadCloud } from "lucide-react";
-import { api, mutation } from "./api";
+import { api } from "./api";
 import { ErrorMessage } from "./components";
 
 export function Compare() {
@@ -9,6 +9,7 @@ export function Compare() {
   const [saved, setSaved] = useState<string[]>([]),
     [selected, setSelected] = useState("");
   const [result, setResult] = useState<any>(null);
+  const [jobDescription, setJobDescription] = useState("");
   useEffect(() => {
     void api<{ resumes: string[] }>("compare/").then((d) =>
       setSaved(d.resumes),
@@ -20,12 +21,26 @@ export function Compare() {
     setError("");
     setResult(null);
     try {
-      setResult(
-        await api("compare/", {
-          method: "POST",
-          body: new FormData(event.currentTarget),
-        }),
+      const form = new FormData(event.currentTarget);
+      const draft = await api<{
+        criteria: { name: string; description: string }[];
+        provider?: string;
+        model?: string;
+        failure_reason?: string;
+      }>("rubric-draft/", {
+        method: "POST",
+        body: JSON.stringify({ description: form.get("job_description") }),
+      });
+      form.set(
+        "criteria",
+        draft.criteria
+          .map((item) => `${item.name}: ${item.description}`)
+          .join("\n"),
       );
+      form.set("rubric_provider", draft.provider || "unknown");
+      form.set("rubric_model", draft.model || "");
+      form.set("rubric_failure_reason", draft.failure_reason || "");
+      setResult(await api("compare/", { method: "POST", body: form }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -39,8 +54,8 @@ export function Compare() {
           <p className="eyebrow">ONE-TO-ONE MATCH</p>
           <h1>Compare a resume</h1>
           <p className="muted">
-            Choose a saved resume or upload one, then define what matters for
-            this JD.
+            Paste a JD and choose a resume. HireLens will define the rubric,
+            score the resume with Jev, and show the evidence by criterion.
           </p>
         </div>
         <FileText size={28} />
@@ -52,20 +67,9 @@ export function Compare() {
             name="job_description"
             minLength={40}
             required
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
             placeholder="Paste the complete job description…"
-          />
-        </label>
-        <label>
-          Comparison criteria
-          <span className="small muted">
-            One criterion per line: skills, experience, outcomes, or
-            requirements.
-          </span>
-          <textarea
-            name="criteria"
-            placeholder={
-              "Python and Django\nExperience building APIs\nClear ownership and measurable outcomes"
-            }
           />
         </label>
         <label>

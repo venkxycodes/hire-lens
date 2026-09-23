@@ -24,7 +24,7 @@ from rest_framework.views import APIView
 
 from .documents import contact_from_text, extract_resume
 from .evaluations import enqueue
-from .models import Activity, Application, Job
+from .models import Activity, Application, Job, ResumeScoringRun
 from .scoring import PROMPT_VERSION, ProviderError, evaluate_live, summarize
 from .serializers import (
     ApplicationDetailSerializer,
@@ -87,26 +87,30 @@ class RubricDraftView(APIView):
         description = str(request.data.get("description", "")).strip()
         if len(description) < 80:
             return Response({"detail": "Add a fuller job description before drafting criteria."}, status=400)
+        failure_reason = "OpenRouter was unavailable or returned an invalid rubric; heuristic criteria were generated."
         if settings.OPENROUTER_API_KEY:
-            prompt = """Convert this job description into an editable hiring rubric. Return ONLY a JSON object with a criteria array. Each item must have id, name, description, category (eligibility/core_capability/technology/domain_experience/preferred/behavioral), priority (must_have/strong_signal/nice_to_have), weight (integer), required (boolean), rationale, and evidence_examples (array of strings). Use observable job evidence, separate must-haves from preferences, ignore demographic traits, and do not invent requirements.
+            prompt = """Convert this job description into an editable hiring rubric. Return ONLY a JSON object with a criteria array. Each item must have id, name, description, category (eligibility/core_capability/technology/domain_experience/preferred/behavioral), priority (must_have/strong_signal/nice_to_have), weight (integer), required (boolean), rationale, and evidence_examples (array of strings). Use observable job evidence, separate must-haves from preferences, ignore demographic traits, and do not invent requirements. Normalize equivalent technologies, frameworks, tools, and terminology by capability and category rather than exact keyword matching. Treat named technologies as examples when the JD says “or similar”; preserve distinctions when they change the job's core capability. Put the equivalence guidance in the criterion description so Jev evaluates capability, while retaining any exact technology requirement as a separate criterion when it is genuinely required.
 
 JOB DESCRIPTION:
 """ + description
+            failures = []
+            model = settings.OPENROUTER_MODEL
             try:
-                response = httpx.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {settings.OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": "https://hire-lens.local", "X-Title": "HireLens"}, json={"model": settings.OPENROUTER_MODEL, "temperature": 0.1, "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]}, timeout=45)
+                response = httpx.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {settings.OPENROUTER_API_KEY}", "Content-Type": "application/json", "HTTP-Referer": "https://hire-lens.local", "X-Title": "HireLens"}, json={"model": model, "temperature": 0.1, "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]}, timeout=45)
                 response.raise_for_status()
                 content = response.json()["choices"][0]["message"]["content"]
                 draft = json.loads(content)
                 criteria = draft.get("criteria")
                 if isinstance(criteria, list) and criteria:
-                    return Response({"criteria": criteria[:12], "provider": "openrouter", "model": settings.OPENROUTER_MODEL})
-            except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-                pass
+                    return Response({"criteria": criteria[:12], "provider": "openrouter", "model": model})
+                failure_reason = f"{model} returned an invalid rubric."
+            except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                failure_reason = f"{model} failed: {exc}"
         sentences = [part.strip(" .:-") for part in re.split(r"[\n.!?;]+", description) if len(part.strip()) >= 18][:8]
         weights = max(1, 100 // max(1, len(sentences)))
         criteria = [{"id": re.sub(r"[^a-z0-9]+", "-", item.lower()).strip("-")[:60] or f"criterion-{i}", "name": item[:100], "description": f"Evidence of {item[0].lower() + item[1:]}", "weight": weights, "required": i < 2} for i, item in enumerate(sentences)]
         if criteria: criteria[-1]["weight"] += 100 - sum(c["weight"] for c in criteria)
-        return Response({"criteria": criteria, "provider": "heuristic-fallback"})
+        return Response({"criteria": criteria, "provider": "heuristic-fallback", "failure_reason": failure_reason})
 
 
 class CompareResumeView(APIView):
@@ -160,7 +164,8 @@ class CompareResumeView(APIView):
         except ProviderError as exc:
             return Response({"detail": str(exc)}, status=503)
         verdict = "Good match" if score >= 90 else "Average match" if score >= 70 else "No match"
-        return Response({"filename": target.name, "score": score, "verdict": verdict, "detail": f"Jev evaluated {len(results)} comparison criteria.", "criteria_results": results, "resume_name": contact_from_text(resume_text, target.name)[0]})
+        run = ResumeScoringRun.objects.create(owner=request.user, job_description=description, criteria=rubric, resume_filename=target.name, score=score, verdict=verdict, results=results, reasoning=[f"{item['name']}: Jev score {round(item['score'])}/100." for item in results], metadata={"rubric_provider": request.data.get("rubric_provider", "unknown"), "rubric_model": request.data.get("rubric_model", ""), "rubric_failure_reason": request.data.get("rubric_failure_reason", "")})
+        return Response({"id": run.id, "filename": target.name, "score": score, "verdict": verdict, "detail": f"Jev evaluated {len(results)} comparison criteria.", "criteria_results": results, "reasoning": run.reasoning, "resume_name": contact_from_text(resume_text, target.name)[0]})
 
 
 class Pages(PageNumberPagination):

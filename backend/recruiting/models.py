@@ -83,3 +83,33 @@ class Activity(models.Model):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     message = models.CharField(max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ResumeScoringRun(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="compare_runs")
+    job_description = models.TextField()
+    criteria = models.JSONField(default=list)
+    resume_filename = models.CharField(max_length=255)
+    score = models.FloatField()
+    verdict = models.CharField(max_length=30)
+    results = models.JSONField(default=list)
+    reasoning = models.JSONField(default=list)
+    metadata = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class TopCandidatesRun(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="top_candidates_runs")
+    job_description = models.TextField()
+    criteria = models.JSONField(default=list)
+    corpus_path = models.CharField(max_length=500, blank=True)
+    resume_count = models.PositiveIntegerField(default=0)
+    results = models.JSONField(default=list)
+    status = models.CharField(max_length=20, default="completed")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
